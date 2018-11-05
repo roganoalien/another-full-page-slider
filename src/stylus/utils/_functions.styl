@@ -1,0 +1,35 @@
+flex-container($align, $direction, $justify, $wrap){
+    align-items $align
+    display flex
+    flex-direction $direction
+    flex-wrap $wrap
+    justify-content $justify
+}
+flex-center($direction = false, $wrap = false){
+    align-items center
+    display flex
+    if $direction {
+        flex-direction column
+    } else {
+        flex-direction row
+    }
+    if $wrap {
+        flex-wrap wrap
+    } else {
+        flex-wrap nowrap
+    }
+    justify-content center
+}
+
+absolute($x, $y, $left = true, $top = true){
+    if $left {
+        left $x
+    } else {
+        right $x
+    }
+    if $top {
+        top $y
+    } else {
+        bottom $y
+    }
+}
