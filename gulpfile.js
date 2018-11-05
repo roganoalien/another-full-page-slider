@@ -9,12 +9,11 @@ const   gulp                = require('gulp'),
         open                = require('gulp-open'),
         rename              = require('gulp-rename'),
         stylus              = require('gulp-stylus'),
-        sourcemaps          = require('gulp-sourcemaps'),
-        fs                  = require('fs');
+        sourcemaps          = require('gulp-sourcemaps');
 /***************
  * CONFIG VARS *
  ***************/
-const   _$dist      = './dist',
+const   _$comp      = './dist',
         _$dev       = './dev',
         _$src       = './src',
         _assets     = '/assets',
@@ -88,7 +87,7 @@ gulp.task('git-delete', (done)=>{
  * PARA EVITAR QUE SE VAYAN O COMPILEN ARCHIVOS QUE NO DEBAN DE IR *
  *******************************************************************/
 gulp.task('delete', (done)=>{
-	return del([_$dev, _$comp, `${ _screenshot }*.png`, `!${ _screenshot }gradient.png`]).then(paths => {
+	return del([_$dev, _$comp]).then(paths => {
 		if(paths.length == 0){
 			log('No se borró ninguna carpeta', 'yellow');
 		} else {
@@ -96,28 +95,19 @@ gulp.task('delete', (done)=>{
 		}
 	});
 });
-/**********************************************************
- *                       DELETE-DEV                       *
- * TAREA PARA ELIMINAR DEV DESPUÉS DE TOMAR EL SCREENSHOT *
- **********************************************************/
-gulp.task('delete-dev', (done)=>{
-	return del(_$dev).then(paths => {
-		log('Se limpió DEV', 'yellow');
-	});
-});
-/*************************************************************
- *                        DEV-CREATE                         *
- * CREA LAS CARPETAS NECESARIAS PARA TRABAJAR DE FORMA LOCAL *
- *************************************************************/
+/************************************************
+ *                    CREATE                    *
+ * CREA LAS CARPETAS NECESARIAS PARA DEV O DIST *
+ ************************************************/
 gulp.task('create', ()=>{
 	return makedir(_dest).then(path => {
 		log(`${ _dest } -- C R E A D O`, 'green');
 	});
 });
-/*********************************************************************
- *                          COPY-ASSETS                          *
- * COPIA Y PEGA LOS ASSETS DE SOURCE A LA CARPETA TEMP DE DESARROLLO *
- *********************************************************************/
+/******************************************************************
+ *                          COPY-ASSETS                           *
+ * COPIA Y PEGA LOS ASSETS DE SOURCE A LA CARPETA CORRESPONDIENTE *
+ ******************************************************************/
 gulp.task('copy-assets', ()=>{
 	return gulp.src(`${ _$src }${ _assets }/**/*`)
 		.pipe(gulp.dest(`${ _dest }${ _assets }`))
@@ -126,11 +116,10 @@ gulp.task('copy-assets', ()=>{
 			log(`Assets copiados a ${ _dest }`, 'green');
 		});
 });
-/************************************************************************
- *                              COPY-HTML                               *
- * COPIA LOS HTML QUE ESTÁN AL PRIMER NIVEL DE SRC Y LOS PASA AL PRIMER *
- *                            NIVEL DE TEMP                             *
- ************************************************************************/
+/**************************************
+ *             COPY-HTML              *
+ * COPIA EL HTML A LA CARPETA DESTINO *
+ **************************************/
 gulp.task('copy-html', ()=>{
 	return gulp.src(`${ _$src }/*.html`)
 		.pipe(gulp.dest(`${ _dest }`))
@@ -143,21 +132,110 @@ gulp.task('copy-html', ()=>{
  *          STYLUS           *
  * COMPILA Y METE AUTOPREFIX *
  *****************************/
-gulp.task('sass', () => {
-	return gulp.src(`${ _$src }/sass/main.scss`)
+gulp.task('stylus', () => {
+	return gulp.src(`${ _$src }/stylus/main.styl`)
 		.pipe(sourcemaps.init())
-		.pipe(sass({
-			outputStyle: _DEV ? '' : 'compressed'
-		}).on('error', sass.logError))
+		.pipe(stylus({
+			compress: _DEV ? 'false' : 'true'
+		})
 		.pipe(autoprefixer({
 			browsers: ['last 2 versions'],
 			cascade: true
 		}))
-		.pipe(rename('style.css'))
+		.pipe(rename('another-slider.css'))
 		.pipe(sourcemaps.write())
 		.pipe(gulp.dest(`${ _dest }${ _css }`))
 		.pipe(connect.reload())
 		.on('end', ()=>{
-			log('SaSS Compilado', 'purple');
+			log('Stylus Compilado', 'purple');
 		});
 });
+/*************************************************
+ *                      JS                       *
+ * COMPILA, CONCATENA Y MINIFICA EL JS DE SRC/JS *
+ *************************************************/
+gulp.task('js', ()=>{
+    let _source = _$src + _js ;
+    return gulp.src(`${_source}/*/**.js`)
+        .pipe(sourcemaps.init())
+        .pipe(babel())
+        .pipe(concat('another-slider.js'))
+        .pipe(!_DEV ? minify({ext:{src:'-min.js', min:'.js'}}) : sourcemaps.write('.'))
+		.pipe(connect.reload())
+		.pipe(gulp.dest(`${ _dest }${ _js }`))
+		.on('end', ()=>{
+			log('Js Compilado', 'yellow');
+    	});
+});
+/*******************************************************************
+ *                          DELETE-MIN-JS                          *
+ * JS EN PROD CREA UN -MIN.JS NO MINIFICADO, ESTA TAREA LO ELIMINA *
+ *******************************************************************/
+gulp.task('js-min-delete', ()=>{
+	return del(`${ _$comp }/js/main-min.js`).then(paths => {
+		if(paths.length == 0){
+			log('No se borró el archivo', 'yellow');
+		} else {
+			log(`Se eliminó:\n${ paths.join('\n') }`, 'yellow');
+		}
+	});
+});
+/****************************************
+ *             ALL WATCHERS             *
+ * TODOS LAS TAREAS DE OBSERVAR CAMBIOS *
+ * ASSETS | SASS | JS | HTML | VENDORS  *
+ ****************************************/
+gulp.task('watchers', (done)=>{
+
+	log('Watchers Runing', 'yellow');
+
+    gulp.watch(`${ _$src }${ _assets }/**/*`, gulp.series('copy-assets'));
+	gulp.watch(`${ _$src }/stylus/**/*.styl`, gulp.series('sass'));
+	gulp.watch(`${ _$src }/js/*.js`, gulp.series('js'));
+	gulp.watch(`${ _$src }/*.html`, gulp.series('copy-html'));
+
+	done();
+
+});
+/*********************************************
+ *                LIVERELOAD                 *
+ * TAREA DE HACER EL LIVERELOAD DEL SERVIDOR *
+ *            DE FORMA AUTOMÁTICA            *
+ *********************************************/
+gulp.task('server', (done)=>{
+	connect.server({
+		host: '127.0.0.1',
+		root: _dest,
+		port: _port,
+		livereload: true
+	});
+	done();
+});
+/*************************************************************
+ *                           OPEN                            *
+ * ABRE UNA VENTANA DEL NAVEGADOR, CON LA DIRECCIÓN INDICADA *
+ *************************************************************/
+gulp.task('open', ()=>{
+	return gulp.src(`${ _dest }/${ _html }`)
+		.pipe(open({ uri: `http://localhost:${ _port }/${ _html }` }));
+});
+/************************************************
+ *                     GIT                      *
+ * TAREA QUE CORRE LA TAREA DE BORRAR LO DE GIT *
+ ************************************************/
+gulp.task('git', gulp.series('git-delete'));
+/***********************************************
+ *                  MINI-DEV                   *
+ * TAREA PARA NO DUPLICAR MISMAS TAREAS DE DEV *
+ ***********************************************/
+gulp.task('build', gulp.series('delete', 'create', 'copy-assets', 'copy-html', 'stylus', 'js'));
+/**********************************************
+ *                    DEV                     *
+ * CORRE TODAS LAS TAREAS NECESARIAS PARA DEV *
+ **********************************************/
+gulp.task('dev', gulp.series('build', gulp.parallel('watchers', 'server', 'open')));
+/******************************************
+ *                  PROD                  *
+ * CORRE TODAS LAS TAREAS PARA PRODUCCIÓN *
+ ******************************************/
+gulp.task('prod', gulp.series('build', 'js-min-delete'));
