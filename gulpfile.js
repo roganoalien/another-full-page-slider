@@ -19,6 +19,8 @@ const   _$comp      = './dist',
         _assets     = '/assets',
         _css        = '/css',
         _dest       = _$dev,
+        _DEV        = true,
+        _html       = 'index.html',
         _js         = '/js',
         _port       = 3000;
 /************************************************************************************
@@ -137,15 +139,17 @@ gulp.task('stylus', () => {
 		.pipe(sourcemaps.init())
 		.pipe(stylus({
 			compress: _DEV ? 'false' : 'true'
-		})
+		})).on('error', function(error){
+            log(error, 'red');
+        })
 		.pipe(autoprefixer({
 			browsers: ['last 2 versions'],
 			cascade: true
 		}))
 		.pipe(rename('another-slider.css'))
 		.pipe(sourcemaps.write())
-		.pipe(gulp.dest(`${ _dest }${ _css }`))
 		.pipe(connect.reload())
+		.pipe(gulp.dest(`${ _dest }${ _css }`))
 		.on('end', ()=>{
 			log('Stylus Compilado', 'purple');
 		});
@@ -155,30 +159,43 @@ gulp.task('stylus', () => {
  * COMPILA, CONCATENA Y MINIFICA EL JS DE SRC/JS *
  *************************************************/
 gulp.task('js', ()=>{
-    let _source = _$src + _js ;
-    return gulp.src(`${_source}/*/**.js`)
+    // return gulp.src(`${_$src}/js/*/**.js`)
+    //     .pipe(sourcemaps.init())
+    //     .pipe(babel({
+    //         presets: ['@babel/env']
+    //     }))
+    //     .pipe(concat('another-slider.js'))
+    //     // .pipe(!_DEV ? minify({ext:{src:'-min.js', min:'.js'}}) : sourcemaps.write('.'))
+	// 	.pipe(connect.reload())
+	// 	.pipe(gulp.dest(`${ _dest }${ _js }`))
+	// 	.on('end', ()=>{
+	// 		log('Js Compilado', 'yellow');
+    // 	});
+    return gulp.src(`${ _$src }/js/*.js`)
         .pipe(sourcemaps.init())
-        .pipe(babel())
+        .pipe(babel({
+            presets: ['@babel/env']
+        }))
         .pipe(concat('another-slider.js'))
-        .pipe(!_DEV ? minify({ext:{src:'-min.js', min:'.js'}}) : sourcemaps.write('.'))
-		.pipe(connect.reload())
-		.pipe(gulp.dest(`${ _dest }${ _js }`))
-		.on('end', ()=>{
-			log('Js Compilado', 'yellow');
-    	});
+        .pipe(connect.reload())
+        .pipe(gulp.dest(`${ _dest }/js`))
+        .on('end', ()=>{
+            log('JS compilado', 'yellow');
+        });
 });
 /*******************************************************************
  *                          DELETE-MIN-JS                          *
  * JS EN PROD CREA UN -MIN.JS NO MINIFICADO, ESTA TAREA LO ELIMINA *
  *******************************************************************/
 gulp.task('js-min-delete', ()=>{
-	return del(`${ _$comp }/js/main-min.js`).then(paths => {
-		if(paths.length == 0){
-			log('No se borró el archivo', 'yellow');
-		} else {
-			log(`Se eliminó:\n${ paths.join('\n') }`, 'yellow');
-		}
-	});
+	// return del(`${ _$comp }/js/main-min.js`).then(paths => {
+	// 	if(paths.length == 0){
+	// 		log('No se borró el archivo', 'yellow');
+	// 	} else {
+	// 		log(`Se eliminó:\n${ paths.join('\n') }`, 'yellow');
+	// 	}
+    // });
+    log('borrar', red);
 });
 /****************************************
  *             ALL WATCHERS             *
@@ -190,7 +207,7 @@ gulp.task('watchers', (done)=>{
 	log('Watchers Runing', 'yellow');
 
     gulp.watch(`${ _$src }${ _assets }/**/*`, gulp.series('copy-assets'));
-	gulp.watch(`${ _$src }/stylus/**/*.styl`, gulp.series('sass'));
+	gulp.watch(`${ _$src }/stylus/**/*.styl`, gulp.series('stylus'));
 	gulp.watch(`${ _$src }/js/*.js`, gulp.series('js'));
 	gulp.watch(`${ _$src }/*.html`, gulp.series('copy-html'));
 
